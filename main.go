@@ -63,50 +63,52 @@ func main() {
 		// fmt.Println("Parsed command:", fields)
 		if move == "f" || move == "" {
 			game.Flip()
-		} else if len(fields) > 0 && fields[0] == "mv" {
+		} else { // Move
 			var err error
-			if move == "mv a t" {
+			if move == "a t" {
 				err = game.MoveAvailToTop()
-			} else if fields[1] == "a" {
-				dst,ok := strconv.Atoi(fields[2])
+			} else if fields[0] == "a" {
+				dst,ok := strconv.Atoi(fields[1])
 				if ok != nil {
-					fmt.Printf("Must follow `mv a` with int. strconv.Atoi error: %v", ok)
+					fmt.Printf("Must follow `a` with int. strconv.Atoi error: %v", ok)
 				} else {
 					err = game.MoveFromAvail(dst)
 				}
-			} else if len(fields) > 1 && fields[1] == "t" {
-				src,ok1 := strconv.Atoi(fields[2])
-				dst,ok2 := strconv.Atoi(fields[3])
-				if ok1 == nil && ok2 == nil {
-					err = game.MoveFromTop(src, dst)
-				}
-			} else if len(fields) > 2 && fields[2] == "t" {
-				src,ok := strconv.Atoi(fields[1])
-				if ok == nil {
-					err = game.MoveToTop(src)
-				}
-			} else if len(fields) > 2 {
+			} else if fields[0] == "t"  && len(fields) > 2{
 				src,ok1 := strconv.Atoi(fields[1])
 				dst,ok2 := strconv.Atoi(fields[2])
+				if ok1 == nil && ok2 == nil {
+					err = game.MoveFromTop(src, dst)
+				} else {
+					fmt.Printf("strconv.Atoi error(s): %v, %v", ok1, ok2)
+				}
+			} else if len(fields) > 1 && fields[1] == "t" {
+				src,ok := strconv.Atoi(fields[0])
+				if ok == nil {
+					err = game.MoveToTop(src)
+				} else {
+					fmt.Printf("strconv.Atoi error: %v", ok)
+				}
+			} else if len(fields) > 1 {
+				src,ok1 := strconv.Atoi(fields[0])
+				dst,ok2 := strconv.Atoi(fields[1])
 				n := 0
 				var ok3 error = nil
-				if len(fields) > 3 {
-					n,ok3 = strconv.Atoi(fields[3])
+				if len(fields) > 2 {
+					n,ok3 = strconv.Atoi(fields[2])
 				}
 				if ok1 == nil && ok2 == nil && ok3 == nil {
 					err = game.Move(src, dst, n)
 				} else {
-					fmt.Println("Invalid command after `mv`! Entered non-integer <src>/<dst>/<n>.")
+					fmt.Println("Invalid move command ! Entered non-integer <src>/<dst>/<n>.")
 				}
 			} else {
-				fmt.Println("Invalid command after `mv`! See `help`.")
+				fmt.Println("Invalid move command! See `help`.")
 			}
 			
 			if err != nil {
 				fmt.Printf("Move error: %v\n", err)
 			}
-		} else {
-			fmt.Println("Invalid command! must be `f` or start with `mv `")
 		}
 
 		game.Display(true)
