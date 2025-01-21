@@ -3,19 +3,17 @@ package game
 import (
 	"solitaire/deck"
 	"fmt"
+	"strings"
 )
 
 const nSuits = deck.NSuits
-const nStacks = 7
-const stackCap = deck.SuitSize + nStacks - 1
-type Card struct {
-	id deck.Card 
-	hidden bool
-}
+const NStacks = 7
+// const stackCap = deck.SuitSize + NStacks - 1
 
 type Game struct {
 	SuitStacks [nSuits]int
-	PlayStacks [nStacks][]Card
+	HiddenStacks [NStacks][]deck.Card // End of slice is top of stack
+	VisibleQueues [NStacks][]deck.Card // End of slice is front of queue (i.e. bottom of "stack")
 	Deck []deck.Card
 	Avail []deck.Card
 }
@@ -26,12 +24,23 @@ func NewGame(d deck.Deck) *Game {
 	cardIdx := 0
 
 	// Initialize stacks
-	for i := 0; i < nStacks; i++ {
-		game.PlayStacks[i] = make([]Card, 0, stackCap)
+	for i := 0; i < NStacks; i++ {
+		game.HiddenStacks[i] = make([]deck.Card, 0, i)
+		game.VisibleQueues[i] = make([]deck.Card, 0, NStacks)
 		for j := 0; j <= i; j++ {
 			var hidden bool = j < i
-			game.PlayStacks[i] = append(game.PlayStacks[i], Card{id:d[cardIdx], hidden: hidden})
+			if hidden {
+				game.HiddenStacks[i] = append(game.HiddenStacks[i], d[cardIdx])
+			} else {
+				game.VisibleQueues[i] = append(game.VisibleQueues[i], d[cardIdx])
+			}
+			
 			cardIdx++
+		}
+
+		if len(game.HiddenStacks[i]) != i || len(game.VisibleQueues[i]) != 1 {
+			panic(fmt.Sprintf("Broken implementation! Stack %v has %v hidden cards and %v visible cards",
+				i, len(game.HiddenStacks[i]), len(game.VisibleQueues[i])))
 		}
 	}
 
@@ -44,52 +53,58 @@ func NewGame(d deck.Deck) *Game {
 
 func (game *Game) Display(hidden bool) {
 	// Suit stacks
-	suitStackString := " "
+	suitStackString := "  "
 	for suit,stackSize := range game.SuitStacks {
 		if game.SuitStacks[suit] == 0 {
 			suitStackString += "_"
 		} else {
 			suitStackString += deck.Ranks[stackSize-1]
 		}
-		suitStackString += deck.Suits[suit] + "   "
+		suitStackString += deck.Suits[suit] + "    "
 	}
 	fmt.Println(suitStackString)
 
 	// Play stacks
 	maxDepth := 0
-	for _,stack := range game.PlayStacks {
-		maxDepth = max(maxDepth, len(stack))
+	for i := range NStacks {
+		stackLen := len(game.HiddenStacks[i])
+		queueLen := len(game.VisibleQueues[i])
+		maxDepth = max(maxDepth, stackLen + queueLen)
 	}
+	fmt.Println(strings.Repeat("-", 43))
 
 	colIdString := ""
-	for i := range game.PlayStacks {
+	for i := range NStacks {
 		colIdString += fmt.Sprintf("  %v   ", i)
 	}
 	fmt.Println(colIdString)
 
 	playStackString := ""
 	for depth := range maxDepth {
-		for _,stack := range game.PlayStacks {
-			if len(stack) <= depth {
+		for i := range NStacks {
+			hiddenStack := game.HiddenStacks[i]
+			visibleQueue := game.VisibleQueues[i]
+
+			if depth < len(hiddenStack) {
+				if hidden {
+					playStackString += " [__] "
+				} else {
+					card := hiddenStack[depth]
+					if card.Rank != deck.Ten {
+						playStackString += " "
+					}
+					playStackString += fmt.Sprintf("[%v] ", card)
+				}
+			} else if depth < len(hiddenStack) + len(visibleQueue) {
+				card := visibleQueue[len(hiddenStack) + len(visibleQueue) - depth - 1]
+
+				if card.Rank != deck.Ten {
+					playStackString += " "
+				}
+				playStackString += fmt.Sprintf(" %v  ", card)
+			} else {
 				playStackString += "      "
 				continue 
-			}
-
-			card := stack[depth]
-			if card.id.Rank != deck.Ten ||
-				(card.hidden && hidden) {
-				playStackString += " "
-			} 
-
-			if !card.hidden {
-				// Card not hidden
-				playStackString += fmt.Sprintf(" %v  ", card.id)
-			} else {
-				if hidden {
-					playStackString += "[__] "
-				} else {
-					playStackString += fmt.Sprintf("[%v] ", card.id)
-				}
 			}
 		}
 		playStackString += "\n"
@@ -122,68 +137,41 @@ func (game *Game) Flip() {
 	game.Deck = game.Deck[l:]
 }
 
-func (game *Game) peekStack(stack int) (*Card,error) {
-	stack_ := game.PlayStacks[stack]
-	if len(stack_) == 0 {
-		return nil,MoveError("Peeking an empty stack!")
+func (game *Game) peekQueue(queueID int) (deck.Card, error) {
+	queue := game.VisibleQueues[queueID]
+	if len(queue) == 0 {
+		return deck.Card{},MoveError(fmt.Sprintf("Failed attempt to peek VisQueue %v with no visible cards!", queueID))
 	}
-	return &stack_[len(stack_) - 1],nil
+	return queue[0],nil
 }
 
-func (game *Game) stackColor(stack int) (byte,error) {
-	card,err := game.peekStack(stack)
-	if err != nil {
-		return 0,err
-	}
-	return card.id.Color(),nil
-}
-
-func (game *Game) checkReveal(stack int) error {
-	card,err := game.peekStack(stack)
-	if err != nil { return err }
-
-	if len(game.PlayStacks[stack]) > 0 && card.hidden {
-		card.hidden = false
-	}
-	return nil 
-}
+// func (game *Game) stackColor(stackID int) (byte,error) {
+// 	card,err := game.peekQueue(stackID)
+// 	if err != nil {
+// 		return 0,err
+// 	}
+// 	return card.Color(),nil
+// }
 
 // Peek the card from top stack for suit `suit`
-func (game *Game) peekSuit(suit int) (Card,error) {
+func (game *Game) peekSuit(suit int) (deck.Card,error) {
 	stackSize := game.SuitStacks[suit]
 	if stackSize == 0 {
-		return Card{}, MoveError(fmt.Sprintf("Trying to pop from empty suit stack %v!", suit))
+		return deck.Card{}, MoveError(fmt.Sprintf("Trying to pop from empty suit stack %v!", suit))
 	}
 
-	return Card{id:deck.NewCard(stackSize-1, suit)},nil
+	return deck.NewCard(stackSize-1, suit),nil
 }
 
 // Pop the card from top stack for suit `suit`
-func (game *Game) popSuit(suit int) (Card,error) {
+func (game *Game) popSuit(suit int) (deck.Card,error) {
 	card,err := game.peekSuit(suit)
 	if err != nil {
-		return Card{},err
+		return deck.Card{},err
 	}
 
 	game.SuitStacks[suit]--
 	return card,nil
-}
-
-// Pop the card from stack `src`
-func (game *Game) popStack(src int) (Card,error) {
-	card,err := game.peekStack(src)
-	if err != nil {
-		return Card{},err
-	}
-	
-	if card.hidden {
-		return Card{},MoveError(fmt.Sprintf("Trying to pop hidden card %v from stack %v!", card, src))
-	}
-
-	stack := game.PlayStacks[src]
-	game.PlayStacks[src] = stack[:len(stack)-1]
-	game.checkReveal(src)
-	return *card,nil
 }
 
 func (game *Game) peekAvail() (deck.Card,error) {
@@ -194,74 +182,118 @@ func (game *Game) peekAvail() (deck.Card,error) {
 }
 
 // Pop one card from game.Avail
-func (game *Game) popAvail() (Card,error) {
+func (game *Game) popAvail() (deck.Card,error) {
 	card,err := game.peekAvail()
 	if err != nil {
-		return Card{},err
+		return deck.Card{},err
 	}
 
 	game.Avail = game.Avail[:len(game.Avail)-1]
-	return Card{id:card},nil
+	return card,nil
 }
 
 // Push the card `card` to its suit stack
-func (game *Game) pushSuit(card Card) error {
-	suit := card.id.Suit
-	if int(card.id.Rank) != game.SuitStacks[suit] {
+func (game *Game) pushSuit(card deck.Card) error {
+	suit := card.Suit
+	if int(card.Rank) != game.SuitStacks[suit] {
 		return MoveError(fmt.Sprintf("Invalid attempt to push card %v on %v stack of size %v!",
-			card.id, suit, game.SuitStacks[suit]))
+			card, suit, game.SuitStacks[suit]))
 	}
 
 	game.SuitStacks[suit]++
 	return nil
 }
 
-func (game *Game) invalidPushStack(card deck.Card, dst int) (bool,error) {
-	validKingMove := card.Rank == deck.King && len(game.PlayStacks[dst]) == 0
-	if validKingMove {
-		return false,nil
-	}
-	dstCard,err := game.peekStack(dst)
-	if err != nil { 
-		return false,err 
+// Peek the last `n` cards from queue `src`
+// func (game *Game) peekQueue(src int, n int) ([]deck.Card,error) {}
+
+// Pop the last `n` cards from queue `src`
+func (game *Game) popQueue(src int, n int) ([]deck.Card,error) {
+	queue := game.VisibleQueues[src]
+	var emptySlice []deck.Card
+	if len(queue) < n {
+		return emptySlice,MoveError(fmt.Sprintf(
+			"Invalid popQueue! Trying to pop %v cards from stack %v with %v visible cards!",
+			n, src, len(queue),
+		))
 	}
 
-	return ((card.Rank != dstCard.id.Rank - 1) || card.Color() == dstCard.id.Color()),nil
+	game.VisibleQueues[src] = game.VisibleQueues[src][n:]
+	if len(game.VisibleQueues[src]) == 0 {
+		nHidden := len(game.HiddenStacks[src])
+		if nHidden > 0 {
+			card := game.HiddenStacks[src][nHidden - 1]
+			game.HiddenStacks[src] = game.HiddenStacks[src][:nHidden-1]
+			newQueue := make([]deck.Card, 0, deck.SuitSize)
+			game.VisibleQueues[src] = append(newQueue, card)
+		}
+	} else {
+		newQueue := make([]deck.Card, 0, deck.SuitSize)
+		game.VisibleQueues[src] = append(newQueue, game.VisibleQueues[src]...)
+	}
+	return queue[:n],nil
 }
 
-// Push the card `card` to stack `dst`
-func (game *Game) pushStack(card Card, dst int) error {
-	isInvalid,err := game.invalidPushStack(card.id, dst)
+func (game *Game) validPushQueue(cards []deck.Card, dst int) (bool,error) {
+	ncards := len(cards)
+	if ncards == 0 {
+		return false,MoveError("Trying to push 0 cards!")
+	}
+
+	card := cards[ncards - 1]
+	if len(game.VisibleQueues[dst]) == 0 && len(game.HiddenStacks[dst]) != 0 {
+		panic(fmt.Sprintf(
+			"Bug found! VisQueue[%v] has length 0, but HiddenStack[%v] has length %v!",
+			dst, dst, len(game.HiddenStacks[dst]),
+		))
+	}
+
+	validKingMove := card.Rank == deck.King && len(game.VisibleQueues[dst]) == 0
+	if validKingMove {
+		return true,nil
+	}
+	
+	dstCard,err := game.peekQueue(dst)
+	if err != nil { 
+		return false,MoveError("Invalid move! Attempted to move non-king to empty stack.") 
+	}
+
+	return ((card.Rank == dstCard.Rank - 1) && card.Color() != dstCard.Color()),nil
+}
+
+// Push the cards `cards` to stack `dst`
+func (game *Game) extendQueue(cards []deck.Card, dst int) error {
+	isValid,err := game.validPushQueue(cards, dst)
 	if err != nil {
 		return err
 	}
 
-	if isInvalid {
-		dstCard,dstErr := game.peekStack(dst)
+	if !isValid {
+		dstCard,dstErr := game.peekQueue(dst)
 		if dstErr != nil {
 			return dstErr
 		}
 
-		return MoveError(fmt.Sprintf("Invalid attempt to append card %v to stack %v with final card %v!",
-			card.id, dst, dstCard.id))
+		return MoveError(fmt.Sprintf("Invalid attempt to append cards %v to stack %v with final card %v!",
+			cards, dst, dstCard))
 	}
 
-	game.PlayStacks[dst] = append(game.PlayStacks[dst], card)
+	game.VisibleQueues[dst] = append(cards, game.VisibleQueues[dst]...)
 	return nil 
+}
+
+// Push the card `card` to stack `dst`
+func (game *Game) pushQueue(card deck.Card, dst int) error {
+	newQueue := make([]deck.Card, 0, deck.SuitSize)
+	newQueue = append(newQueue, card)
+	return game.extendQueue(newQueue, dst)
 }
 
 // Move `ncards` from stack `src` to stack `dst`
 func (game *Game) Move(src int, dst int, ncards int) error {
-	srcStack := game.PlayStacks[src]
+	// srcStack := game.PlayStacks[src]
 	
-	nVisibleCards := 0
-	for i := len(srcStack) - 1; i >= 0; i-- {
-		if srcStack[i].hidden {
-			break
-		} else {
-			nVisibleCards++
-		}
-	}
+	nVisibleCards := len(game.VisibleQueues[src])
 
 	if ncards == 0 {
 		ncards = nVisibleCards
@@ -270,22 +302,24 @@ func (game *Game) Move(src int, dst int, ncards int) error {
 			"Invalid move! %v cards from src %v with only %v visible cards!", ncards, src, nVisibleCards))
 	}
 
-	cards := srcStack[len(srcStack) - ncards:]
-
-	// Need to check this ahead of time so that error is not thrown only on push,
-	// leaving pop complete and game state invalid
-	isInvalid,err := game.invalidPushStack(cards[0].id, dst)
-	if err != nil {
-		return err 
+	valid,err0 := game.validPushQueue(game.VisibleQueues[src][:ncards], dst)
+	if err0 != nil {
+		return err0
+	} else if !valid {
+		return MoveError(fmt.Sprintf(
+			"Invalid move! Cannot move %v cards from stack %v to stack %v!",
+			ncards, src, dst,
+		))
 	}
 
-	if isInvalid {
-		return MoveError(fmt.Sprintf("Invalid move! %v cards from src %v to dst %v.", ncards, src, dst))
+	cards,err1 := game.popQueue(src, ncards)
+	if err1 != nil {
+		return err1
 	}
 
-	for _,card := range cards {
-		game.popStack(src)
-		game.pushStack(card, dst)
+	err2 := game.extendQueue(cards, dst)
+	if err2 != nil {
+		return err2
 	}
 
 	return nil
@@ -298,7 +332,7 @@ func (game *Game) MoveFromAvail(dst int) error {
 		return err
 	}
 
-	err2 := game.pushStack(Card{id:card}, dst)
+	err2 := game.pushQueue(card, dst)
 	if err2 != nil {
 		return err2
 	}
@@ -316,7 +350,7 @@ func (game *Game) MoveAvailToTop() error {
 		return err
 	}
 
-	err2 := game.pushSuit(Card{id:card})
+	err2 := game.pushSuit(card)
 	if err2 != nil {
 		return err2
 	}
@@ -335,7 +369,7 @@ func (game *Game) MoveFromTop(suit int, dst int) error {
 		return err
 	}
 
-	err2 := game.pushStack(card, dst)
+	err2 := game.pushQueue(card, dst)
 	if err2 != nil {
 		return err2
 	}
@@ -349,19 +383,19 @@ func (game *Game) MoveFromTop(suit int, dst int) error {
 
 // Move one card from stack `src` to top
 func (game *Game) MoveToTop(src int) error {
-	card,err := game.peekStack(src)
+	card,err := game.peekQueue(src)
 	if err != nil {
 		return err
 	}
 
-	err2 := game.pushSuit(*card)
+	err2 := game.pushSuit(card)
 	if err2 != nil {
 		return err2
 	}
 
-	_,err3 := game.popStack(src) // This will never fail if peekAvail does not fail
-	if err3 != nil {
-		panic("This should be impossible!")
+	cards,err3 := game.popQueue(src, 1) // This will never fail if peekAvail does not fail
+	if err3 != nil || len(cards) != 1 || cards[0] != card {
+		panic(fmt.Sprintf("This should be impossible! %v, %v, %v", err3, cards, card))
 	}
 	return nil
 }

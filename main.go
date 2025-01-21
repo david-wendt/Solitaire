@@ -11,6 +11,8 @@ import (
 	"solitaire/game"
 )
 
+const nStacks int = game.NStacks
+
 // var testing bool = true  
 var testing bool = false 
 
@@ -26,18 +28,12 @@ func main() {
 	}
 
 	deck := deck.NewDeck()
-	fmt.Println(deck)
+	// fmt.Println(deck)
 	deck.Shuffle()
-	fmt.Println(deck)
+	// fmt.Println(deck)
 
 	game := game.NewGame(deck)
-	fmt.Printf("%+v\n", game)
-
-	for i,slice := range game.PlayStacks {
-		fmt.Println(i,slice, len(slice), cap(slice))
-	}
-	fmt.Println("Deck:", game.Deck, len(game.Deck), cap(game.Deck))
-	fmt.Println("Avail:", game.Avail, len(game.Avail), cap(game.Avail))
+	// fmt.Printf("%+v\n", game)
 
 	game.Display(false)
 	
