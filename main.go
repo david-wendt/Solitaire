@@ -44,14 +44,13 @@ func main() {
 		move := strings.ToLower(strings.TrimSpace(input))
 
 		if move == "h" || move == "help" {
-			fmt.Println("`mv` to move a card, `f` to flip 3 cards from deck.")
-			fmt.Println("With `mv`,")
-			fmt.Println("\tfollow with `a t` to move from avail to top")
-			fmt.Println("\tfollow with `a <dst>` to move from avail to stack <dst>")
-			fmt.Println("\tfollow with `<src> <dst> <n>` to move <n> cards from stack <src> to stack <dst>")
+			fmt.Println("<Enter> to flip 3 cards from deck. To move cards,")
+			fmt.Println("\t`a t` to move from available (waste pile) to top (foundation)")
+			fmt.Println("\t`a <dst>` to move from available (waste pile) to stack <dst> (in tableau)")
+			fmt.Println("\tfollow with `<src> <dst> <n>` to move <n> cards from stack <src> to stack <dst> (in tableau)")
 			fmt.Println("\t\tOmit <n> to move all visible cards")
-			fmt.Println("\tfollow with `<src> t` to move from stack <src> to top")
-			fmt.Println("\tfollow with `t <src> <dst>` to move from top stack <src> to stack <dst>")
+			fmt.Println("\tfollow with `<src> t` to move from stack <src> (in tableau) to top (foundation)")
+			fmt.Println("\tfollow with `t <src> <dst>` to move from top (foundation) stack <src> to stack <dst> (in tableau)")
 			continue 
 		}
 
