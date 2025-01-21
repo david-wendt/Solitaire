@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"solitaire/deck"
 	"solitaire/game"
+	"solitaire/ioutils"
 )
 
 func main() {
@@ -21,10 +20,7 @@ func main() {
 	game.Display(true) // `true` to hide hidden cards
 
 	for {
-		fmt.Print("Enter a move: ")
-		reader := bufio.NewReader(os.Stdin)
-		input, _ := reader.ReadString('\n') // Reads until newline
-		move := strings.ToLower(strings.TrimSpace(input))
+		move := ioutils.Input("Enter a move: ")
 
 		if move == "h" || move == "help" {
 			fmt.Println("<Enter> to flip 3 cards from deck. To move cards,")

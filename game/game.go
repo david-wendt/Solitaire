@@ -137,7 +137,7 @@ func (game *Game) Flip() {
 	game.Deck = game.Deck[l:]
 }
 
-func (game *Game) peekQueue(queueID int) (deck.Card, error) {
+func (game *Game) PeekQueue(queueID int) (deck.Card, error) {
 	queue := game.VisibleQueues[queueID]
 	if len(queue) == 0 {
 		return deck.Card{},MoveError(fmt.Sprintf("Failed attempt to peek VisQueue %v with no visible cards!", queueID))
@@ -146,7 +146,7 @@ func (game *Game) peekQueue(queueID int) (deck.Card, error) {
 }
 
 // func (game *Game) stackColor(stackID int) (byte,error) {
-// 	card,err := game.peekQueue(stackID)
+// 	card,err := game.PeekQueue(stackID)
 // 	if err != nil {
 // 		return 0,err
 // 	}
@@ -154,7 +154,7 @@ func (game *Game) peekQueue(queueID int) (deck.Card, error) {
 // }
 
 // Peek the card from top stack for suit `suit`
-func (game *Game) peekSuit(suit int) (deck.Card,error) {
+func (game *Game) PeekSuit(suit int) (deck.Card,error) {
 	stackSize := game.SuitStacks[suit]
 	if stackSize == 0 {
 		return deck.Card{}, MoveError(fmt.Sprintf("Trying to pop from empty suit stack %v!", suit))
@@ -165,7 +165,7 @@ func (game *Game) peekSuit(suit int) (deck.Card,error) {
 
 // Pop the card from top stack for suit `suit`
 func (game *Game) popSuit(suit int) (deck.Card,error) {
-	card,err := game.peekSuit(suit)
+	card,err := game.PeekSuit(suit)
 	if err != nil {
 		return deck.Card{},err
 	}
@@ -174,7 +174,7 @@ func (game *Game) popSuit(suit int) (deck.Card,error) {
 	return card,nil
 }
 
-func (game *Game) peekAvail() (deck.Card,error) {
+func (game *Game) PeekAvail() (deck.Card,error) {
 	if len(game.Avail) == 0 {
 		return deck.Card{},MoveError("Trying to peek an empty Avail!")
 	}
@@ -183,7 +183,7 @@ func (game *Game) peekAvail() (deck.Card,error) {
 
 // Pop one card from game.Avail
 func (game *Game) popAvail() (deck.Card,error) {
-	card,err := game.peekAvail()
+	card,err := game.PeekAvail()
 	if err != nil {
 		return deck.Card{},err
 	}
@@ -192,10 +192,16 @@ func (game *Game) popAvail() (deck.Card,error) {
 	return card,nil
 }
 
+func (game *Game) CanPushSuit(card deck.Card) (bool,deck.SuitT) {
+	suit := card.Suit
+	canPush := int(card.Rank) == game.SuitStacks[suit]
+	return canPush,suit
+}
+
 // Push the card `card` to its suit stack
 func (game *Game) pushSuit(card deck.Card) error {
-	suit := card.Suit
-	if int(card.Rank) != game.SuitStacks[suit] {
+	canPush,suit := game.CanPushSuit(card)
+	if !canPush {
 		return MoveError(fmt.Sprintf("Invalid attempt to push card %v on %v stack of size %v!",
 			card, suit, game.SuitStacks[suit]))
 	}
@@ -205,7 +211,7 @@ func (game *Game) pushSuit(card deck.Card) error {
 }
 
 // Peek the last `n` cards from queue `src`
-// func (game *Game) peekQueue(src int, n int) ([]deck.Card,error) {}
+// func (game *Game) PeekQueue(src int, n int) ([]deck.Card,error) {}
 
 // Pop the last `n` cards from queue `src`
 func (game *Game) popQueue(src int, n int) ([]deck.Card,error) {
@@ -253,7 +259,7 @@ func (game *Game) validPushQueue(cards []deck.Card, dst int) (bool,error) {
 		return true,nil
 	}
 	
-	dstCard,err := game.peekQueue(dst)
+	dstCard,err := game.PeekQueue(dst)
 	if err != nil { 
 		return false,MoveError("Invalid move! Attempted to move non-king to empty stack.") 
 	}
@@ -269,7 +275,7 @@ func (game *Game) extendQueue(cards []deck.Card, dst int) error {
 	}
 
 	if !isValid {
-		dstCard,dstErr := game.peekQueue(dst)
+		dstCard,dstErr := game.PeekQueue(dst)
 		if dstErr != nil {
 			return dstErr
 		}
@@ -327,7 +333,7 @@ func (game *Game) Move(src int, dst int, ncards int) error {
 
 // Move one card from game.Avail to stack `dst`
 func (game *Game) MoveFromAvail(dst int) error {
-	card,err := game.peekAvail()
+	card,err := game.PeekAvail()
 	if err != nil {
 		return err
 	}
@@ -337,7 +343,7 @@ func (game *Game) MoveFromAvail(dst int) error {
 		return err2
 	}
 
-	_,err3 := game.popAvail() // This will never fail if peekAvail does not fail
+	_,err3 := game.popAvail() // This will never fail if PeekAvail does not fail
 	if err3 != nil {
 		panic("This should be impossible!")
 	}
@@ -345,7 +351,7 @@ func (game *Game) MoveFromAvail(dst int) error {
 }
 
 func (game *Game) MoveAvailToTop() error {
-	card,err := game.peekAvail()
+	card,err := game.PeekAvail()
 	if err != nil {
 		return err
 	}
@@ -355,7 +361,7 @@ func (game *Game) MoveAvailToTop() error {
 		return err2
 	}
 
-	_,err3 := game.popAvail() // This will never fail if peekAvail does not fail
+	_,err3 := game.popAvail() // This will never fail if PeekAvail does not fail
 	if err3 != nil {
 		panic("This should be impossible!")
 	}
@@ -364,7 +370,7 @@ func (game *Game) MoveAvailToTop() error {
 
 // Move one card from stack for suit `suit` to stack `dst`
 func (game *Game) MoveFromTop(suit int, dst int) error {
-	card,err := game.peekSuit(suit)
+	card,err := game.PeekSuit(suit)
 	if err != nil {
 		return err
 	}
@@ -374,7 +380,7 @@ func (game *Game) MoveFromTop(suit int, dst int) error {
 		return err2
 	}
 
-	_,err3 := game.popSuit(suit) // This will never fail if peekSuit does not fail
+	_,err3 := game.popSuit(suit) // This will never fail if PeekSuit does not fail
 	if err3 != nil {
 		panic("This should be impossible!")
 	}
@@ -383,7 +389,7 @@ func (game *Game) MoveFromTop(suit int, dst int) error {
 
 // Move one card from stack `src` to top
 func (game *Game) MoveToTop(src int) error {
-	card,err := game.peekQueue(src)
+	card,err := game.PeekQueue(src)
 	if err != nil {
 		return err
 	}
@@ -393,7 +399,7 @@ func (game *Game) MoveToTop(src int) error {
 		return err2
 	}
 
-	cards,err3 := game.popQueue(src, 1) // This will never fail if peekAvail does not fail
+	cards,err3 := game.popQueue(src, 1) // This will never fail if PeekAvail does not fail
 	if err3 != nil || len(cards) != 1 || cards[0] != card {
 		panic(fmt.Sprintf("This should be impossible! %v, %v, %v", err3, cards, card))
 	}

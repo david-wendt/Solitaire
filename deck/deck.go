@@ -5,16 +5,16 @@ import (
 	"math/rand"
 )
 
-type _rank byte 
-type _suit byte
+type RankT byte 
+type SuitT byte
 
 type Card struct {
-	Rank _rank
-	Suit _suit
+	Rank RankT
+	Suit SuitT
 }
 
 func NewCard(rank int, suit int) Card {
-	return Card{Rank: _rank(rank), Suit: _suit(suit)}
+	return Card{Rank: RankT(rank), Suit: SuitT(suit)}
 }
 
 func (c Card) String() string {
@@ -26,7 +26,7 @@ func (c Card) Color() byte {
 }
 
 const (
-	Spades _suit = iota
+	Spades SuitT = iota
 	Hearts
 	Clubs
 	Diamonds
@@ -50,7 +50,7 @@ var Suits = [...]string{
 
 const NSuits = len(Suits)
 
-func (s _suit) String() string {
+func (s SuitT) String() string {
     if int(s) < len(Suits) {
         return Suits[s]
     }
@@ -58,7 +58,7 @@ func (s _suit) String() string {
 }
 
 const (
-	Ace _rank = iota 
+	Ace RankT = iota 
 	Two
 	Three
 	Four
@@ -91,7 +91,7 @@ var Ranks = [...]string{
 
 const SuitSize = len(Ranks)
 
-func (r _rank) String() string {
+func (r RankT) String() string {
     if int(r) < SuitSize {
         return Ranks[r]
     }
@@ -113,4 +113,8 @@ func (d *Deck) Shuffle() {
 	rand.Shuffle(len(d), func(i, j int) {
 		d[i], d[j] = d[j], d[i]
 	})
+}
+
+func CanPlace(card, dest Card) bool {
+	return dest.Rank == card.Rank + 1 && card.Color() != dest.Color()
 }
