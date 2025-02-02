@@ -410,3 +410,11 @@ type MoveError string
 func (err MoveError) Error() string {
 	return string(err)
 }
+
+func (game *Game) IsWon() bool {
+	won := true 
+	for _,suitStackSize := range game.SuitStacks {
+		won = won && (suitStackSize == deck.SuitSize)
+	}
+	return won 
+}

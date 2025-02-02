@@ -208,7 +208,7 @@ func (agent *Agent) executeMove(moves Moves, idx int) {
 	}
 }
 
-func (agent *Agent) Act(verbose bool) {
+func (agent *Agent) Act(verbose bool) (movedCard bool) {
 	agent.recomputeHighLowCards() // Remove this if we keep high/low cards up-to-date as intended!
 	moves := agent.findMoves()
 	var moveID int = -1
@@ -222,4 +222,6 @@ func (agent *Agent) Act(verbose bool) {
 	}
 	
 	agent.executeMove(moves, moveID)
+	movedCard = moveID != -1
+	return movedCard
 }
