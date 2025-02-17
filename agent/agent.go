@@ -7,17 +7,6 @@ import (
 	"solitaire/game"
 )
 
-type Moves struct {
-	Tableau [][2]int
-	Avail []int 
-	ToTop []int 
-	FromTop [][2]int
-}
-
-func (moves Moves) len() int {
-	return len(moves.Tableau) + len(moves.Avail) + len(moves.ToTop) + len(moves.FromTop)
-}
-
 type Agent struct {
 	game *game.Game
 	highCards map[deck.Card]int
@@ -213,7 +202,12 @@ func (agent *Agent) Act(verbose bool) (movedCard bool) {
 	moves := agent.findMoves()
 	var moveID int = -1
 	if moves.len() > 0 {
-		moveID = agent.strategy.choose(&moves)
+		moveID = agent.strategy.choose(agent.game, &moves)
+	} else {
+		switch agent.strategy.(type) {
+		case Manual:
+			fmt.Println("No available moves! Flipping.")
+		}
 	}
 
 	if verbose {

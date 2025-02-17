@@ -3,11 +3,15 @@ package agent
 import (
 	// "fmt"
 	"math/rand"
+	"solitaire/game"
 )
 
 type Strategy interface {
-	choose(*Moves) int
+	choose(*game.Game, *Moves) int
 }
+
+type NullStrategy struct{}
+func (strat NullStrategy) choose(game *game.Game, moves *Moves) int { return 0 }
 
 type ProbabilisticStrategy struct{
 	PFlip float32
@@ -17,7 +21,7 @@ type ProbabilisticStrategy struct{
 	PFromTop float32
 }
 
-func (strat ProbabilisticStrategy) choose(moves *Moves) int {
+func (strat ProbabilisticStrategy) choose(game *game.Game, moves *Moves) int {
 	nTableau := len(moves.Tableau)
 	nAvail := len(moves.Avail)
 	nToTop := len(moves.ToTop)

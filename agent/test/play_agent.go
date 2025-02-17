@@ -8,24 +8,29 @@ import (
 	"solitaire/agent"
 	"solitaire/deck"
 	"solitaire/game"
-	"solitaire/ioutils"
+	// "solitaire/ioutils"
 )
 
 func main() {
 
+	// agent.TestFindAvailCards()
+	// return 
 
 	// Idea: Same initialization, but priority strategy. 
 	// Deterministic, and move down in order of priority.
 	// Might be hard to code dynamically, easier to hardcode the priority.
 
 	// Warning! If PFlip is zero, can get stuck in infinite loop
-	strategy := agent.ProbabilisticStrategy{
-		PFlip: 0.000001, 
-		PTableau: 1.,
-		PAvail: 0.001,
-		PToTop: 10000.,
-		PFromTop: 0.,
-	}
+	// strategy := agent.ProbabilisticStrategy{
+	// 	PFlip: 0.000001, 
+	// 	PTableau: 1.,
+	// 	PAvail: 0.001,
+	// 	PToTop: 10000.,
+	// 	PFromTop: 0.,
+	// }
+	strategy := agent.Manual{}
+	// verbose := true 
+	verbose := false 
 
 	// won := runGame(strategy, true)
 	// if won {
@@ -34,8 +39,8 @@ func main() {
 	// 	fmt.Println("You lost :(")
 	// }
 
-	nGames := 10000
-	nTrials := 10
+	nGames := 1
+	nTrials := 1
 
 	sumWinRate := 0.0
 	sumSqWinRate := 0.0
@@ -45,8 +50,17 @@ func main() {
 		var sumSqTime int64 = 0
 		for range nGames {
 			start := time.Now()
-			won := runGame(strategy, false)
+			won := runGame(strategy, verbose)
 			if won { wins++ }
+			
+			if nGames == 1 && nTrials == 1 {
+				if won {
+					fmt.Println("Congratulations! You won!")
+				} else {
+					fmt.Println("Oh no! You lost :(")
+				}
+			}
+
 			t := time.Now()
 			elapsed := t.Sub(start)
 
@@ -88,11 +102,6 @@ func runGame(strategy agent.Strategy, verbose bool) (won bool) {
 	
 	var turnsWithoutMove int
 	for turnsWithoutMove < max(len(game.Avail) + len(game.Deck), 10) {
-		if verbose {
-			input := ioutils.Input("Continue? <Enter> if so, anything else to quit.")
-			if input != "" { break }
-		}
-
 		movedCard := agent.Act(verbose)
 		if verbose { game.Display(true) }
 

@@ -41,7 +41,7 @@ func main() {
 			var err error
 			if move == "a t" {
 				err = game.MoveAvailToTop()
-			} else if fields[0] == "a" {
+			} else if fields[0] == "a" && len(fields) > 1 {
 				dst, ok := strconv.Atoi(fields[1])
 				if ok != nil {
 					fmt.Printf("Must follow `a` with int. strconv.Atoi error: %v", ok)

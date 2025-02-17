@@ -8,6 +8,7 @@ import (
 
 const nSuits = deck.NSuits
 const NStacks = 7
+const NFLIP = 3
 // const stackCap = deck.SuitSize + NStacks - 1
 
 type Game struct {
@@ -110,8 +111,7 @@ func (game *Game) Display(hidden bool) {
 		playStackString += "\n"
 	}
 	fmt.Print(playStackString)
-
-	fmt.Printf("Deck: [[%v]]\n", len(game.Deck))
+	
 	availString := "["
 	if len(game.Avail) == 0 {
 		availString += "]"
@@ -121,18 +121,28 @@ func (game *Game) Display(hidden bool) {
 		}
 	}
 	fmt.Printf("Avail: %v\n", availString)
+
+	// Print the hidden cards in the deck
+	deckString := ""
+	if len(game.Deck) == 0 {
+		deckString += "[]"
+	} else {
+		for i := 0; i < len(game.Deck); i++ {
+			deckString += "[" + game.Deck[i].String()
+		}
+	}
+	fmt.Printf("Deck: %v]\n", deckString)
 }
 
 func (game *Game) Flip() {
 	// Flip 3 cards from the game.Deck to the game.Avail
-
 	if len(game.Deck) == 0 {
 		// Deck is out, swap Deck and Avail
 		game.Deck = game.Avail
 		game.Avail = make([]deck.Card, 0, len(game.Deck))
 	}
 
-	l := min(len(game.Deck), 3)
+	l := min(len(game.Deck), NFLIP)
 	game.Avail = append(game.Avail, game.Deck[:l]...)
 	game.Deck = game.Deck[l:]
 }
